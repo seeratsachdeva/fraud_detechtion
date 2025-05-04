@@ -14,9 +14,19 @@ uploaded_file_1 = st.file_uploader("Upload Dataset 1", type=["csv"])
 uploaded_file_2 = st.file_uploader("Upload Dataset 2", type=["csv"])
 
 if uploaded_file_1 is not None and uploaded_file_2 is not None:
-    df1 = pd.read_csv(uploaded_file_1)
-    df2 = pd.read_csv(uploaded_file_2)
+    try:
+        df1 = pd.read_csv(uploaded_file_1)
+        st.success("Dataset 1 loaded successfully!")
+    except Exception as e:
+        st.error(f"Error loading Dataset 1: {e}")
 
+    try:
+        df2 = pd.read_csv(uploaded_file_2)
+        st.success("Dataset 2 loaded successfully!")
+    except Exception as e:
+        st.error(f"Error loading Dataset 2: {e}")
+
+    # Show Dataset Overviews
     st.subheader("Dataset 1 Overview")
     st.write(df1.head())
     st.write(df1.describe())
@@ -68,3 +78,6 @@ if uploaded_file_1 is not None and uploaded_file_2 is not None:
         sns.histplot(df2[compare_feature], kde=True, ax=ax[1], color='salmon')
         ax[1].set_title(f"Dataset 2 - {compare_feature}")
         st.pyplot(fig)
+
+else:
+    st.warning("Please upload both datasets to proceed.")
