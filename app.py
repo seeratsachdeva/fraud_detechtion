@@ -1,70 +1,129 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
+import numpy as np
 import seaborn as sns
+import matplotlib.pyplot as plt
+import joblib
+from sklearn.preprocessing import StandardScaler
 
-# This must be at the very top
+# Set page config (only once)
 st.set_page_config(page_title="Financial Fraud Detection App", layout="wide")
 
-# Title
-st.title("📊 Static Dataset Comparison")
+# Load the saved model and scaler
+model = joblib.load("random_forest_model.pkl")
+scaler = joblib.load("scaler.pkl")
 
-# Upload CSVs
-uploaded_file_1 = st.file_uploader("Upload Dataset 1", type=["csv"])
-uploaded_file_2 = st.file_uploader("Upload Dataset 2", type=["csv"])
+# Sidebar navigation
+st.sidebar.title("Navigation")
+page = st.sidebar.radio("Go to", ["Home", "Static Dataset Comparison", "Dynamic Prediction"])
 
-if uploaded_file_1 is not None and uploaded_file_2 is not None:
-    df1 = pd.read_csv(uploaded_file_1)
-    df2 = pd.read_csv(uploaded_file_2)
+# Home page
+if page == "Home":
+    st.title("💳 Financial Fraud Detection Using Big Data Analytics")
+    st.markdown("""
+        Welcome to the Financial Fraud Detection App.
 
-    st.subheader("Dataset 1 Overview")
-    st.write(df1.head())
-    st.write(df1.describe())
+        **Sections:**
+        - 📊 **Static Dataset Comparison**: Upload and compare two datasets side by side with fraud distribution and advanced visualizations.
+        - 🤖 **Dynamic Prediction**: Enter transaction details and predict whether it is fraudulent or not using a trained ML model.
 
-    st.subheader("Dataset 2 Overview")
-    st.write(df2.head())
-    st.write(df2.describe())
+        This app is based on the research paper: **"Financial Fraud Detection Using Big Data Analytics"**.
+    """)
 
-    # Fraud distribution pie charts
-    st.subheader("Fraud vs Non-Fraud Distribution")
+# Static Dataset Comparison Page
+elif page == "Static Dataset Comparison":
+    st.title("📊 Static Dataset Comparison")
 
-    col1, col2 = st.columns(2)
-    with col1:
+    uploaded_file_1 = st.file_uploader("Upload Dataset 1", type=["csv"], key="file1")
+    uploaded_file_2 = st.file_uploader("Upload Dataset 2", type=["csv"], key="file2")
+
+    if uploaded_file_1 is not None and uploaded_file_2 is not None:
+        df1 = pd.read_csv(uploaded_file_1)
+        df2 = pd.read_csv(uploaded_file_2)
+
+        st.subheader("Dataset 1 Preview")
+        st.write(df1.head())
+
+        st.subheader("Dataset 2 Preview")
+        st.write(df2.head())
+
+        # Show fraud distribution pie charts
+        st.subheader("Fraud vs Non-Fraud Distribution")
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
+
         if 'fraud' in df1.columns:
-            fig1, ax1 = plt.subplots()
-            df1['fraud'].value_counts().plot.pie(
-                autopct='%1.1f%%',
-                labels=['Not Fraud', 'Fraud'],
-                colors=["#66b3ff", "#ff9999"],
-                ax=ax1
-            )
-            ax1.set_title("Dataset 1 Fraud Distribution")
-            st.pyplot(fig1)
+            df1['fraud'].value_counts().plot.pie(autopct='%1.1f%%', labels=['Not Fraud', 'Fraud'], colors=["#66b3ff", "#ff9999"], ax=ax1)
+            ax1.set_title("Dataset 1")
         else:
-            st.warning("⚠️ 'fraud' column not found in Dataset 1.")
+            ax1.text(0.5, 0.5, 'fraud column not found', ha='center')
 
-    with col2:
         if 'fraud' in df2.columns:
-            fig2, ax2 = plt.subplots()
-            df2['fraud'].value_counts().plot.pie(
-                autopct='%1.1f%%',
-                labels=['Not Fraud', 'Fraud'],
-                colors=["#66b3ff", "#ff9999"],
-                ax=ax2
-            )
-            ax2.set_title("Dataset 2 Fraud Distribution")
-            st.pyplot(fig2)
+            df2['fraud'].value_counts().plot.pie(autopct='%1.1f%%', labels=['Not Fraud', 'Fraud'], colors=["#66b3ff", "#ff9999"], ax=ax2)
+            ax2.set_title("Dataset 2")
         else:
-            st.warning("⚠️ 'fraud' column not found in Dataset 2.")
+            ax2.text(0.5, 0.5, 'fraud column not found', ha='center')
 
-    # Dropdown for additional comparisons
-    st.subheader("🔽 Visual Comparison by Feature")
-    compare_feature = st.selectbox("Choose a feature to compare:", options=[col for col in df1.columns if df1[col].dtype in ['int64', 'float64']])
-
-    if compare_feature:
-        fig, ax = plt.subplots(1, 2, figsize=(12, 4))
-        sns.histplot(df1[compare_feature], kde=True, ax=ax[0], color='skyblue')
-        ax[0].set_title(f"Dataset 1 - {compare_feature}")
-        sns.histplot(df2[compare_feature], kde=True, ax=ax[1], color='salmon')
-        ax[1].set_title(f"Dataset 2 - {compare_feature}")
         st.pyplot(fig)
+
+        # Feature selection and chart type
+        st.subheader("📈 Feature Comparison")
+        selected_feature = st.selectbox("Select Feature to Compare", df1.columns)
+        chart_type = st.selectbox("Select Chart Type", ["Histogram", "Boxplot", "Violinplot", "KDE Plot"])
+
+        fig, ax = plt.subplots(figsize=(10, 5))
+        if chart_type == "Histogram":
+            sns.histplot(df1[selected_feature], color='blue', label='Dataset 1', kde=False, ax=ax)
+            sns.histplot(df2[selected_feature], color='orange', label='Dataset 2', kde=False, ax=ax)
+        elif chart_type == "Boxplot":
+            combined = pd.concat([
+                pd.DataFrame({selected_feature: df1[selected_feature], 'Dataset': 'Dataset 1'}),
+                pd.DataFrame({selected_feature: df2[selected_feature], 'Dataset': 'Dataset 2'})
+            ])
+            sns.boxplot(x='Dataset', y=selected_feature, data=combined, ax=ax)
+        elif chart_type == "Violinplot":
+            combined = pd.concat([
+                pd.DataFrame({selected_feature: df1[selected_feature], 'Dataset': 'Dataset 1'}),
+                pd.DataFrame({selected_feature: df2[selected_feature], 'Dataset': 'Dataset 2'})
+            ])
+            sns.violinplot(x='Dataset', y=selected_feature, data=combined, ax=ax)
+        elif chart_type == "KDE Plot":
+            sns.kdeplot(df1[selected_feature], label='Dataset 1', ax=ax, fill=True)
+            sns.kdeplot(df2[selected_feature], label='Dataset 2', ax=ax, fill=True)
+
+        ax.set_title(f"{chart_type} of {selected_feature}")
+        ax.legend()
+        st.pyplot(fig)
+
+# Dynamic Prediction Page
+elif page == "Dynamic Prediction":
+    st.title("🔍 Dynamic Fraud Detection")
+
+    st.subheader("Enter Transaction Details")
+    
+    distance_from_home = st.number_input("Distance from Home", min_value=0.0)
+    distance_from_last_transaction = st.number_input("Distance from Last Transaction", min_value=0.0)
+    ratio_to_median_purchase_price = st.number_input("Ratio to Median Purchase Price", min_value=0.0)
+    repeat_retailer = st.selectbox("Repeat Retailer", [0, 1])
+    used_chip = st.selectbox("Used Chip", [0, 1])
+    used_pin_number = st.selectbox("Used PIN Number", [0, 1])
+    online_order = st.selectbox("Online Order", [0, 1])
+
+    if st.button("Predict Fraud"):
+        user_data = np.array([
+            distance_from_home,
+            distance_from_last_transaction,
+            ratio_to_median_purchase_price,
+            repeat_retailer,
+            used_chip,
+            used_pin_number,
+            online_order
+        ]).reshape(1, -1)
+
+        user_data_scaled = scaler.transform(user_data)
+        prediction = model.predict(user_data_scaled)[0]
+        prediction_proba = model.predict_proba(user_data_scaled)[0][1]
+
+        if prediction == 1:
+            st.error(f"⚠️ Transaction is Fraudulent with {prediction_proba*100:.2f}% confidence")
+        else:
+            st.success(f"✅ Transaction is NOT Fraudulent with {(1-prediction_proba)*100:.2f}% confidence")
