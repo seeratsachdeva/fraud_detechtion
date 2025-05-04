@@ -11,10 +11,7 @@ st.set_page_config(page_title="Financial Fraud Detection App", layout="wide")
 # Cache data loading to reduce memory usage
 @st.cache_data
 def load_data(uploaded_file):
-    df = pd.read_csv(uploaded_file)
-    
-    # Limit data to 10,000 rows to reduce memory usage
-    return df.sample(n=10000, random_state=42) if len(df) > 10000 else df
+    return pd.read_csv(uploaded_file)
 
 # Sidebar for navigation
 st.sidebar.title("Navigation")
@@ -33,11 +30,13 @@ if app_mode == "Home":
 elif app_mode == "Static Analysis":
     st.title("📊 Static Dataset Comparison")
 
-    uploaded_file_1 = st.file_uploader("Upload Dataset 1", type=["csv"], key="file1")
+    # Use the updated dataset from the specified path
+    file_path_1 = r"D:\Financial_Fraud_Detection_App_ML\card_transdata.csv"
+    df1 = pd.read_csv(file_path_1)
+
     uploaded_file_2 = st.file_uploader("Upload Dataset 2", type=["csv"], key="file2")
 
-    if uploaded_file_1 is not None and uploaded_file_2 is not None:
-        df1 = load_data(uploaded_file_1)
+    if uploaded_file_2 is not None:
         df2 = load_data(uploaded_file_2)
 
         st.subheader("Dataset 1 Overview")
